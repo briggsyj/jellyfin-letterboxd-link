@@ -9,6 +9,8 @@ on:
 
 permissions:
   contents: read
+  actions: read
+  checks: write
 
 jobs:
   dotnet-test:
@@ -30,7 +32,19 @@ jobs:
         run: dotnet build --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test --no-build --configuration Release --logger "console;verbosity=normal"
+        run: >
+          dotnet test --no-build --configuration Release
+          --logger "trx;LogFileName=test-results.trx"
+          --logger "console;verbosity=normal"
+          --results-directory ./test-results
+
+      - name: .NET test report
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        if: ${{ !cancelled() }}
+        with:
+          name: .NET Tests
+          path: 'test-results/*.trx'
+          reporter: dotnet-trx
 
   script-test:
     name: Injected script tests
@@ -45,4 +59,16 @@ jobs:
           node-version: '20'
 
       - name: Run tests
-        run: npm test
+        run: |
+          mkdir -p test-results
+          node --test \
+            --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=junit --test-reporter-destination=test-results/junit.xml
+
+      - name: JS test report
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        if: ${{ !cancelled() }}
+        with:
+          name: JS Tests
+          path: 'test-results/junit.xml'
+          reporter: java-junit
