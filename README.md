@@ -21,9 +21,21 @@ plugin rather than patching jellyfin-web's files directly. See
 
 ## Installation
 
-1. Download the latest release zip from [Releases](../../releases).
-2. Unzip it into a `LetterboxdLink` folder under your Jellyfin
-   [plugins directory](https://jellyfin.org/docs/general/server/plugins/#adding-plugin-repositories).
+1. **Install [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation)
+   first** and confirm it's enabled - this plugin depends on it to inject
+   its button, and won't show anything without it. Follow the install
+   instructions on its GitHub page (their [`README`](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation#installation)
+   covers adding their plugin repository to Jellyfin).
+2. Install this plugin, either:
+   - **Add as a repository** (recommended - Jellyfin then handles
+     updates): in Jellyfin, go to Dashboard → Plugins → Repositories → Add
+     Repository, and add
+     `https://briggsyj.github.io/jellyfin-letterboxd-link/manifest.json`.
+     Then find "Letterboxd Link" under Catalog and install it.
+   - **Manual zip install**: download the latest release zip from
+     [Releases](../../releases) and unzip it into a `LetterboxdLink` folder
+     under your Jellyfin
+     [plugins directory](https://jellyfin.org/docs/general/server/plugins/#adding-plugin-repositories).
 3. Restart Jellyfin.
 
 To build from source instead, see [CONTRIBUTING.md](CONTRIBUTING.md).

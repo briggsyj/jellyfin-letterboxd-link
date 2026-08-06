@@ -71,3 +71,43 @@ jobs:
             artifacts/*.zip
             artifacts/*.md5sum
             artifacts/*.meta.json
+
+      - name: Publish plugin repository manifest to GitHub Pages
+        if: github.event_name == 'release'
+        env:
+          PIP_BREAK_SYSTEM_PACKAGES: '1'
+        run: |
+          set -euo pipefail
+
+          python3 -m pip install --quiet jprm
+
+          pages_url="https://$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]').github.io/${GITHUB_REPOSITORY#*/}"
+
+          git fetch origin gh-pages:refs/remotes/origin/gh-pages || true
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            # -B (re)creates the local gh-pages branch pointing at the remote
+            # tip, so the later `git push origin gh-pages` has a real local
+            # branch ref to push (a plain detached checkout wouldn't).
+            git worktree add -B gh-pages gh-pages origin/gh-pages
+          else
+            # First release ever: no gh-pages branch upstream yet. The
+            # orphan branch is named after the worktree path (gh-pages).
+            git worktree add --orphan gh-pages
+          fi
+
+          if [ ! -f gh-pages/manifest.json ]; then
+            jprm --verbosity=info repo init gh-pages
+          fi
+
+          jprm --verbosity=info repo add --url="${pages_url}" gh-pages artifacts/*.zip
+
+          cd gh-pages
+          git add .
+          if git diff --cached --quiet; then
+            echo "No manifest changes to publish."
+          else
+            git -c user.name="github-actions[bot]" \
+                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                commit -m "Publish ${{ steps.version.outputs.version }}"
+            git push origin gh-pages
+          fi

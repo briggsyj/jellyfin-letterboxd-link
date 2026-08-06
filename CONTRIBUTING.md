@@ -68,19 +68,24 @@ Copy `Jellyfin.Plugin.LetterboxdLink/bin/Release/net9.0/publish/*` into
 ## Releasing (maintainers)
 
 Publishing a GitHub Release (or running `.github/workflows/release.yml`
-via `workflow_dispatch`) builds the plugin with
+via `workflow_dispatch`, which only builds and skips the two steps below)
+builds the plugin with
 [jprm](https://github.com/oddstr13/jellyfin-plugin-repository-manager)
-and attaches the resulting `.zip`, `.md5sum`, and `.meta.json` to the
-release. The version comes from the release tag (or the
-`workflow_dispatch` input), falling back to `build.yaml`.
+and:
 
-> Before the first release, update the `owner` field in `build.yaml` -
-> it's currently a placeholder.
+1. Attaches the resulting `.zip`, `.md5sum`, and `.meta.json` to the
+   release, for manual/zip installs. The version comes from the release
+   tag (or the `workflow_dispatch` input), falling back to `build.yaml`.
+2. Publishes/updates a plugin repository manifest on the `gh-pages`
+   branch via `jprm repo add`, so the plugin can also be installed by
+   adding a repository URL in Jellyfin (see the README) rather than
+   installing the zip by hand. `gh-pages` is created automatically on
+   first release; no local setup needed.
 
-For one-click installs via a Jellyfin repository URL rather than manual
-zip installs, host the generated `meta.json` (merged into a running
-`manifest.json` with `jprm repo add`) on GitHub Pages or similar - that's
-not automated here, to keep the CI surface minimal.
+> One-time setup: enable Pages for this repo under Settings → Pages →
+> Source → "Deploy from a branch" → `gh-pages` / `(root)`. Until that's
+> done, step 2 above still runs and populates `gh-pages`, but the
+> manifest URL in the README won't resolve yet.
 
 ## License
 
