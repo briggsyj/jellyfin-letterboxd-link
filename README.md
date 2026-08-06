@@ -16,7 +16,7 @@ plugin. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for further technical information.
 
 The letterboxd button (★) appears alongside the existing actions on a movie's detail page,
-and in the hover actions on movie cards in library views:
+and in the hover quick-actions on movie posters and banners in list views:
 
 ![The Letterboxd button on a movie detail page](assets/example.png)
 
