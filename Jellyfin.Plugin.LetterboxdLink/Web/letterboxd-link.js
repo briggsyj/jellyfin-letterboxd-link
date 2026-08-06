@@ -118,7 +118,7 @@
         content.className = 'detailButton-content';
 
         var icon = document.createElement('span');
-        icon.className = 'material-icons detailButton-icon local_movies';
+        icon.className = 'material-icons detailButton-icon star_rate';
         icon.setAttribute('aria-hidden', 'true');
 
         content.appendChild(icon);
