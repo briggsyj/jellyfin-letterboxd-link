@@ -6,7 +6,17 @@
         "overview": "Adds a Letterboxd link button to each movie's detail page.",
         "owner": "briggsyj",
         "category": "General",
+        "image": "manifest-banner.png",
+        "imageUrl": "https://briggsyj.github.io/jellyfin-letterboxd-link/letterboxd-link/manifest-banner.png",
         "versions": [
+            {
+                "version": "0.3.0.0",
+                "changelog": "1.0.0.0 - Initial release: adds a Letterboxd link button to movie detail pages.\n",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": "https://briggsyj.github.io/jellyfin-letterboxd-link/letterboxd-link/letterboxd-link_0.3.0.0.zip",
+                "checksum": "9bf80a8d472e4a9e2b9eaaf39bc0c99d",
+                "timestamp": "2026-08-06T08:59:18Z"
+            },
             {
                 "version": "0.2.0.0",
                 "changelog": "1.0.0.0 - Initial release: adds a Letterboxd link button to movie detail pages.\n",
