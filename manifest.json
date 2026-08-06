@@ -8,6 +8,14 @@
         "category": "General",
         "versions": [
             {
+                "version": "0.2.0.0",
+                "changelog": "1.0.0.0 - Initial release: adds a Letterboxd link button to movie detail pages.\n",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": "https://briggsyj.github.io/jellyfin-letterboxd-link/letterboxd-link/letterboxd-link_0.2.0.0.zip",
+                "checksum": "441b9552b7d62842d011651edfe334a4",
+                "timestamp": "2026-08-06T06:44:21Z"
+            },
+            {
                 "version": "0.1.0.0",
                 "changelog": "1.0.0.0 - Initial release: adds a Letterboxd link button to movie detail pages.\n",
                 "targetAbi": "10.11.0.0",
