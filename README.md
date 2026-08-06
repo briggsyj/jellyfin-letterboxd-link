@@ -1,5 +1,7 @@
 # Jellyfin Letterboxd Link
 
+![Letterboxd Link banner](assets/banner.png)
+
 [![License: GPL v3](https://img.shields.io/github/license/briggsyj/jellyfin-letterboxd-link)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/briggsyj/jellyfin-letterboxd-link)](../../releases)
 [![CI](https://github.com/briggsyj/jellyfin-letterboxd-link/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
@@ -61,7 +63,11 @@ This is an unofficial, community-made plugin: it is **not affiliated with,
 endorsed by, or sponsored by Jellyfin, Inc. or Letterboxd Limited**.
 "Jellyfin" is a trademark of Jellyfin, Inc.; "Letterboxd" and the dots
 device are registered trademarks of Letterboxd Limited. No logos or brand
-assets from either project are used. The plugin only renders a plain
-hyperlink to Letterboxd's public site, opened by the user's own browser -
-it does not use Letterboxd's API, scrape the service, or access any
-private data.
+assets from either project are used - the artwork in `assets/` is original,
+depicting only a generic chain link and star rather than either project's
+actual logo mark, and reuses Jellyfin's own publicly documented
+purple-to-blue palette (`#AA5CC3` → `#00A4DC` on `#000B25`), which their
+branding guidelines explicitly permit reusing "with a different logo
+shape." The plugin only renders a plain hyperlink to Letterboxd's public
+site, opened by the user's own browser - it does not use Letterboxd's
+API, scrape the service, or access any private data.

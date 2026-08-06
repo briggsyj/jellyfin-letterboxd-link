@@ -5,6 +5,7 @@ version: "1.0.0.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 owner: "briggsyj"
+image: "assets/manifest-banner.png"
 overview: "Adds a Letterboxd link button to each movie's detail page."
 description: >
   Letterboxd Link adds a small button to the movie details page that opens
