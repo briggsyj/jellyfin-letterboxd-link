@@ -1,0 +1,20 @@
+[
+    {
+        "guid": "81fd3f59-6723-456e-9224-084444970919",
+        "name": "Letterboxd Link",
+        "description": "Letterboxd Link adds a small button to the movie details page that opens the film's Letterboxd page in a new tab, resolved from the movie's TMDb id. Requires the File Transformation plugin to also be installed. No configuration or account linking required.\n",
+        "overview": "Adds a Letterboxd link button to each movie's detail page.",
+        "owner": "briggsyj",
+        "category": "General",
+        "versions": [
+            {
+                "version": "0.1.0.0",
+                "changelog": "1.0.0.0 - Initial release: adds a Letterboxd link button to movie detail pages.\n",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": "https://briggsyj.github.io/jellyfin-letterboxd-link/letterboxd-link/letterboxd-link_0.1.0.0.zip",
+                "checksum": "97291242bb04a14c9fadf69036bf87aa",
+                "timestamp": "2026-08-06T06:25:08Z"
+            }
+        ]
+    }
+]
