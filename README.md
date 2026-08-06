@@ -15,6 +15,10 @@ injects the button via the
 plugin. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for further technical information.
 
+The button (★) appears alongside the existing actions on a movie's detail page:
+
+![The Letterboxd button on a movie detail page](assets/example.png)
+
 ## Requirements
 
 - Jellyfin server ≥ **10.11.x**
