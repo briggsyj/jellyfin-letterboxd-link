@@ -6,6 +6,9 @@
     "test": "node --test"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.22.2"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1"
   }
 }
