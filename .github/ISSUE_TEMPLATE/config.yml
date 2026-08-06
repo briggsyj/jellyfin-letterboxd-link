@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: File Transformation plugin issues
+    url: https://github.com/IAmParadox27/jellyfin-plugin-file-transformation/issues
+    about: If the problem is with script injection itself (not the Letterboxd link specifically), it may belong upstream with the File Transformation plugin.

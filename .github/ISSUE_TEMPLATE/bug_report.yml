@@ -1,0 +1,85 @@
+name: Bug report
+description: The Letterboxd button is missing, broken, or misbehaving.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. A quick note on the most
+        common cause: this plugin only works when the
+        [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation)
+        plugin is also installed and enabled. If the button is simply not
+        showing up, please confirm that first.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched existing issues and didn't find a duplicate.
+          required: true
+        - label: The File Transformation plugin is installed and enabled, and I have restarted Jellyfin since.
+          required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Letterboxd Link version
+      placeholder: e.g. 1.0.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: jellyfin-version
+    attributes:
+      label: Jellyfin server version
+      placeholder: e.g. 10.11.11
+    validations:
+      required: true
+
+  - type: input
+    id: file-transformation-version
+    attributes:
+      label: File Transformation plugin version
+      placeholder: e.g. 2.5.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: client
+    attributes:
+      label: Client / browser
+      description: Where you see (or don't see) the button.
+      placeholder: e.g. Firefox 130 on desktop, Jellyfin web
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected, and what actually happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a movie's detail page
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or console errors
+      description: |
+        Anything from the Jellyfin server log mentioning "LetterboxdLink" or
+        "FileTransformation", and/or errors from the browser dev-tools console.
+        This will be automatically formatted as code, so no need for backticks.
+      render: shell
+    validations:
+      required: false
