@@ -25,7 +25,7 @@ public static class IndexHtmlTransformation
     /// <summary>
     /// Callback invoked by the File Transformation plugin.
     /// </summary>
-    /// <param name="payload">The current contents of index.html.</param>
+    /// <param name="payload">Payload from the File Transformation plugin, wrapping index.html's current contents.</param>
     /// <returns>The (possibly modified) contents of index.html.</returns>
     public static string Inject(IndexHtmlTransformationPayload payload)
     {

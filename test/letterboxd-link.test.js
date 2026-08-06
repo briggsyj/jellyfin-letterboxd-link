@@ -28,6 +28,11 @@ test('getTmdbId returns null when there is no Tmdb id', () => {
     assert.equal(getTmdbId(item), null);
 });
 
+test('getTmdbId accepts the alternate TMDb provider-id key casings', () => {
+    assert.equal(getTmdbId({ ProviderIds: { TMDb: '550' } }), '550');
+    assert.equal(getTmdbId({ ProviderIds: { tmdb: '550' } }), '550');
+});
+
 test('getTmdbId rejects non-numeric ids', () => {
     const item = { ProviderIds: { Tmdb: 'not-a-number' } };
     assert.equal(getTmdbId(item), null);
