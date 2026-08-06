@@ -28,11 +28,6 @@ plugin rather than patching jellyfin-web's files directly. See
 
 To build from source instead, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Out of scope (for now)
-
-Per-user Letterboxd usernames/diary links, OAuth or credential storage,
-rating/watched-status writeback, diary polling.
-
 ## Contributing
 
 Bug reports, fixes, and small improvements are welcome - see
