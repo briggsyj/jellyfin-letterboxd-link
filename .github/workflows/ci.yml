@@ -61,9 +61,32 @@ jobs:
       - name: Run tests
         run: |
           mkdir -p test-results
+
+          # Run tests without letting a test failure short-circuit the rest
+          # of this script (the default `bash -e` would skip the junit.xml
+          # fix-up below), but still fail the step afterwards if tests failed.
+          set +e
           node --test \
             --test-reporter=spec --test-reporter-destination=stdout \
             --test-reporter=junit --test-reporter-destination=test-results/junit.xml
+          test_exit_code=$?
+          set -e
+
+          # Node's built-in junit reporter puts <testcase> elements directly
+          # under <testsuites> with no <testsuite> wrapper, which isn't valid
+          # JUnit XML and dorny/test-reporter's java-junit parser silently
+          # reports "no tests found" for it. Wrap them so it parses correctly.
+          node -e "
+            const fs = require('node:fs');
+            const path = 'test-results/junit.xml';
+            let xml = fs.readFileSync(path, 'utf8');
+            xml = xml
+              .replace('<testsuites>', '<testsuites>\n<testsuite name=\"letterboxd-link\">')
+              .replace('</testsuites>', '</testsuite>\n</testsuites>');
+            fs.writeFileSync(path, xml);
+          "
+
+          exit $test_exit_code
 
       - name: JS test report
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
