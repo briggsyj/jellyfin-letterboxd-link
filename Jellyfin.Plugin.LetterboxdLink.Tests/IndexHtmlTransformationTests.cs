@@ -68,6 +68,31 @@ public class IndexHtmlTransformationTests
         Assert.Throws<ArgumentNullException>(() => IndexHtmlTransformation.InjectScriptTag(null!, string.Empty));
     }
 
+    [Theory]
+    [InlineData("</body>")]
+    [InlineData("</BODY>")]
+    [InlineData("</Body>")]
+    public void InjectScriptTag_MatchesClosingBodyTagCaseInsensitively(string closingTag)
+    {
+        string html = "<html><body>content" + closingTag + "</html>";
+
+        string result = IndexHtmlTransformation.InjectScriptTag(html, string.Empty);
+
+        Assert.True(result.IndexOf("<script", StringComparison.Ordinal) < result.IndexOf(closingTag, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void InjectScriptTag_TreatsBlankBaseUrlAsNoPrefix(string baseUrl)
+    {
+        const string html = "<html><body></body></html>";
+
+        string result = IndexHtmlTransformation.InjectScriptTag(html, baseUrl);
+
+        Assert.Contains("src=\"/LetterboxdLink/letterboxd-link.js\"", result);
+    }
+
     // Inject(payload) is intentionally not unit tested here: it reads
     // Plugin.Instance, and referencing that type is enough for the JIT to
     // try to load Jellyfin server assemblies that are only present next to

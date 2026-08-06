@@ -12,6 +12,12 @@ namespace Jellyfin.Plugin.LetterboxdLink.Controllers;
 [Route("LetterboxdLink")]
 public class LetterboxdLinkController : ControllerBase
 {
+    // The [Route] + [HttpGet] path below must resolve to the same URL as
+    // IndexHtmlTransformation.ScriptRoute, since that is what gets written
+    // into the injected <script src>. This resource name must likewise match
+    // the <EmbeddedResource> in the .csproj (root namespace + "Web" folder +
+    // file name). Neither coupling is checked at compile time, so keep them
+    // in sync by hand if the route or file location ever changes.
     private const string EmbeddedScriptResourceName = "Jellyfin.Plugin.LetterboxdLink.Web.letterboxd-link.js";
 
     /// <summary>

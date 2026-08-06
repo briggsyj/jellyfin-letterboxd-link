@@ -58,7 +58,7 @@
      * route or there's no id present.
      */
     function getItemIdFromHash(hash) {
-        if (typeof hash !== 'string' || hash.indexOf(DETAILS_ROUTE_PREFIX) !== 0) {
+        if (!isDetailsRoute(hash)) {
             return null;
         }
 
@@ -71,6 +71,11 @@
         return params.get('id');
     }
 
+    /**
+     * True if the given location hash is the item details route
+     * ("#/details..."). Used to decide whether the button belongs on the
+     * current page at all.
+     */
     function isDetailsRoute(hash) {
         return typeof hash === 'string' && hash.indexOf(DETAILS_ROUTE_PREFIX) === 0;
     }
