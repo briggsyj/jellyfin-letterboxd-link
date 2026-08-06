@@ -1,0 +1,73 @@
+name: Release Plugin
+
+# Builds a Jellyfin-installable plugin zip and attaches it (plus its
+# checksum and meta.json) to a GitHub Release. Runs automatically when a
+# release is published, or manually via workflow_dispatch to sanity-check
+# the build without publishing anything.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Plugin version to build (e.g. 1.0.1.0). Defaults to the version in build.yaml.'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Determine plugin version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            version="${{ github.event.inputs.version }}"
+          elif [ -n "${{ github.event.release.tag_name }}" ]; then
+            version="${{ github.event.release.tag_name }}"
+          else
+            version=""
+          fi
+          # jprm expects a plain numeric version (e.g. 1.0.1.0); strip a
+          # leading "v" if the tag/input used one (e.g. "v1.0.1.0").
+          version="${version#v}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Build plugin package
+        id: build
+        uses: oddstr13/jellyfin-plugin-repository-manager@9497a0a499416cc572ed2e07a391d9f943a37b4d # v1.1.1
+        with:
+          path: .
+          output: ./artifacts
+          version: ${{ steps.version.outputs.version }}
+          dotnet-config: Release
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-package
+          path: |
+            artifacts/*.zip
+            artifacts/*.md5sum
+            artifacts/*.meta.json
+          if-no-files-found: error
+
+      - name: Attach artifacts to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*.zip
+            artifacts/*.md5sum
+            artifacts/*.meta.json

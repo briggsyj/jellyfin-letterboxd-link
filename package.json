@@ -1,0 +1,11 @@
+{
+  "name": "jellyfin-letterboxd-link",
+  "private": true,
+  "description": "Unit tests for the client script injected by the Letterboxd Link Jellyfin plugin.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

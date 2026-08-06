@@ -1,0 +1,9 @@
+bin/
+obj/
+artifacts/
+.vs/
+.vscode/
+.idea/
+*.user
+node_modules/
+.DS_Store
