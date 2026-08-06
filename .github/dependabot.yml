@@ -1,0 +1,40 @@
+version: 2
+updates:
+  # .NET packages: Jellyfin.Controller/Jellyfin.Model (Jellyfin.Plugin.LetterboxdLink)
+  # and the xunit/coverlet test dependencies (Jellyfin.Plugin.LetterboxdLink.Tests).
+  #
+  # NOTE: PRs bumping Jellyfin.Controller/Jellyfin.Model need a manual check
+  # before merging - build.yaml's targetAbi/framework and this repo's
+  # TargetFramework may also need updating to match the new Jellyfin
+  # server version, they won't be changed automatically.
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      test-dependencies:
+        patterns:
+          - "xunit*"
+          - "coverlet.collector"
+          - "Microsoft.NET.Test.Sdk"
+
+  # Actions used in .github/workflows/ci.yml and release.yml, including the
+  # two pinned-by-SHA third-party actions (oddstr13/jellyfin-plugin-repository-manager,
+  # dorny/test-reporter) - Dependabot updates both the SHA and its trailing
+  # "# vX.Y.Z" version comment together.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # package.json has no dependencies yet (the JS tests use only Node's
+  # built-in test runner) - included so this starts working automatically
+  # if any get added later.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
