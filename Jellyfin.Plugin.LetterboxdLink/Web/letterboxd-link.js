@@ -2,9 +2,10 @@
  * Letterboxd Link - injected into jellyfin-web's index.html by the
  * LetterboxdLink plugin (via the File Transformation plugin).
  *
- * Adds a button to the movie details page that links to the film's
- * Letterboxd page, resolved from its TMDb id via the (undocumented but
- * long-standing) https://letterboxd.com/tmdb/{tmdbId}/ redirect.
+ * Adds a button to a movie's details page and to the hover overlay on movie
+ * cards, linking to the film's Letterboxd page, resolved from its TMDb id via
+ * the (undocumented but long-standing) https://letterboxd.com/tmdb/{tmdbId}/
+ * redirect.
  *
  * Pure helper functions live at the top and are exported for unit tests
  * (see test/letterboxd-link.test.js) via the CommonJS guard below them.
@@ -15,6 +16,7 @@
     'use strict';
 
     var BUTTON_CLASS = 'btnLetterboxdLink';
+    var CARD_BUTTON_CLASS = 'btnLetterboxdLinkCard';
     var DETAILS_ROUTE_PREFIX = '#/details';
     var RETRY_INTERVAL_MS = 500;
     var MAX_RETRY_ATTEMPTS = 20;
@@ -193,6 +195,111 @@
         });
     }
 
+    // ---- Card / poster overlay button --------------------------------
+    // Movie cards in list views show a hover overlay (play / watched /
+    // favourite / more). Unlike the details page, a card only exposes the
+    // Jellyfin item id in the DOM, not the TMDb id - so the Letterboxd link is
+    // resolved lazily when the button is actually clicked, rather than fetching
+    // every visible movie up front just to render the overlay.
+
+    function openLetterboxdForItem(itemId) {
+        var apiClient = window.ApiClient;
+        if (!apiClient) {
+            return;
+        }
+
+        // Open the tab synchronously inside the click handler. If window.open
+        // were called later, after the async item lookup below, the browser
+        // would treat it as a non-user-initiated popup and block it.
+        var newTab = window.open('about:blank', '_blank');
+        if (newTab) {
+            newTab.opener = null;
+        }
+
+        apiClient.getItem(apiClient.getCurrentUserId(), itemId).then(function (item) {
+            if (!newTab) {
+                return;
+            }
+
+            var tmdbId = getTmdbId(item);
+            if (tmdbId) {
+                newTab.location = buildLetterboxdUrl(tmdbId);
+            } else {
+                // Movie has no TMDb id, so there's nothing to link to.
+                newTab.close();
+            }
+        }).catch(function () {
+            if (newTab) {
+                newTab.close();
+            }
+        });
+    }
+
+    function createCardButton(itemId) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'cardOverlayButton cardOverlayButton-hover paper-icon-button-light ' + CARD_BUTTON_CLASS;
+        button.title = 'View on Letterboxd';
+
+        var icon = document.createElement('span');
+        icon.className = 'material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover star_rate';
+        icon.setAttribute('aria-hidden', 'true');
+        button.appendChild(icon);
+
+        button.addEventListener('click', function (event) {
+            // The overlay container is itself an "itemAction" that navigates to
+            // the Jellyfin item, so stop the click from reaching it.
+            event.preventDefault();
+            event.stopPropagation();
+            openLetterboxdForItem(itemId);
+        });
+
+        return button;
+    }
+
+    function injectCardButton(container) {
+        if (container.querySelector('.' + CARD_BUTTON_CLASS)) {
+            return;
+        }
+
+        var card = container.closest('.card');
+        if (!card || card.getAttribute('data-type') !== 'Movie') {
+            return;
+        }
+
+        var itemId = card.getAttribute('data-id');
+        if (!itemId) {
+            return;
+        }
+
+        var button = createCardButton(itemId);
+
+        // Place it just before the "more" (meatball) button, i.e. after the
+        // favourite button.
+        var moreIcon = container.querySelector('.material-icons.more_vert');
+        var moreButton = moreIcon ? moreIcon.closest('button') : null;
+        if (moreButton) {
+            container.insertBefore(button, moreButton);
+        } else {
+            container.appendChild(button);
+        }
+    }
+
+    // Card hover overlays are created on demand as the user hovers cards, so
+    // only inspect freshly added subtrees rather than rescanning the page.
+    function processCardOverlays(node) {
+        if (node.matches && node.matches('.cardOverlayButton-br')) {
+            injectCardButton(node);
+        }
+
+        if (node.querySelectorAll) {
+            var containers = node.querySelectorAll('.cardOverlayButton-br');
+            for (var i = 0; i < containers.length; i++) {
+                injectCardButton(containers[i]);
+            }
+        }
+    }
+
     // The details page (and its buttons) can render asynchronously after
     // route/DOM changes, so a single attempt right after navigation is not
     // reliable. Poll briefly until the buttons container shows up.
@@ -221,12 +328,23 @@
 
     window.addEventListener('hashchange', scheduleRetries);
 
-    // Fallback for cases where the details page content is replaced without
-    // a hashchange event (e.g. navigating between items in the same list).
-    var observer = new MutationObserver(function () {
+    var observer = new MutationObserver(function (mutations) {
+        // Details page: fallback for when its content is replaced without a
+        // hashchange event (e.g. navigating between items in the same list).
         var hash = window.location.hash || '';
         if (isDetailsRoute(hash) && findDetailButtonsContainer() && !document.querySelector('.' + BUTTON_CLASS)) {
             tryInject();
+        }
+
+        // Card overlays: inject into any hover menus that have just appeared.
+        for (var i = 0; i < mutations.length; i++) {
+            var addedNodes = mutations[i].addedNodes;
+            for (var j = 0; j < addedNodes.length; j++) {
+                var node = addedNodes[j];
+                if (node.nodeType === 1) { // Element nodes only
+                    processCardOverlays(node);
+                }
+            }
         }
     });
     observer.observe(document.body, { childList: true, subtree: true });
