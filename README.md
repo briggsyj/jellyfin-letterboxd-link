@@ -1,5 +1,11 @@
 # Jellyfin Letterboxd Link
 
+![Letterboxd Link banner](assets/banner.png)
+
+[![License: GPL v3](https://img.shields.io/github/license/briggsyj/jellyfin-letterboxd-link)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/briggsyj/jellyfin-letterboxd-link)](../../releases)
+[![CI](https://github.com/briggsyj/jellyfin-letterboxd-link/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+
 A small Jellyfin plugin that adds a button to a movie's detail page linking
 straight to that film's [Letterboxd](https://letterboxd.com) page. No
 accounts, no configuration, no background tasks.
@@ -57,7 +63,11 @@ This is an unofficial, community-made plugin: it is **not affiliated with,
 endorsed by, or sponsored by Jellyfin, Inc. or Letterboxd Limited**.
 "Jellyfin" is a trademark of Jellyfin, Inc.; "Letterboxd" and the dots
 device are registered trademarks of Letterboxd Limited. No logos or brand
-assets from either project are used. The plugin only renders a plain
+assets from either project are used - this plugin's own logo (`assets/logo.png`,
+`assets/banner.png`) is built from standard Unicode emoji (🔗⭐) rather than
+artwork resembling either brand, and reuses only Jellyfin's public
+purple-to-blue palette, which their branding guidelines explicitly permit
+reusing "with a different logo shape." The plugin only renders a plain
 hyperlink to Letterboxd's public site, opened by the user's own browser -
 it does not use Letterboxd's API, scrape the service, or access any
 private data.
