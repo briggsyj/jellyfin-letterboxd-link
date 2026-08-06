@@ -34,7 +34,7 @@ breaks, the fallback would be Letterboxd's public search (out of scope for now).
 
 ## Dev setup
 
-Requires the .NET 9 SDK and Node 18+.
+Requires the .NET 9 SDK and Node 22.22+ (jsdom's floor; LTS 22 or 24).
 
 ```bash
 dotnet test          # C# tests (mainly IndexHtmlTransformation)
