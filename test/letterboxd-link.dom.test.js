@@ -17,6 +17,7 @@ const SCRIPT_SOURCE = fs.readFileSync(
 );
 
 const MENU_ITEM_SELECTOR = '.btnLetterboxdLinkMenuItem';
+const LIST_ITEM_BUTTON_SELECTOR = '.btnLetterboxdLinkListItem';
 
 // Builds a movie card whose hover overlay contains a "more" button, mirroring
 // jellyfin-web's cardBuilder overlay markup (data-action="menu" is present on
@@ -27,6 +28,17 @@ function cardHtml(dataType, dataId) {
         + '<div class="cardOverlayButton-br flex">'
         + '<button class="moreBtn" data-action="menu"><span class="material-icons more_vert"></span></button>'
         + '</div></div></div></div>';
+}
+
+// Builds a list view row, mirroring jellyfin-web's listview.js output: the
+// favourite (rating) button and "more" button both live in
+// .listViewUserDataButtons, with the item id on the row itself.
+function listItemHtml(dataType, dataId) {
+    return '<div class="listItem" data-id="' + dataId + '" data-type="' + dataType + '">'
+        + '<div class="listViewUserDataButtons">'
+        + '<button is="emby-ratingbutton" class="listItemButton paper-icon-button-light"><span class="material-icons favorite"></span></button>'
+        + '<button class="listItemButton itemAction" data-action="menu"><span class="material-icons more_vert"></span></button>'
+        + '</div></div>';
 }
 
 // Builds an action sheet mirroring jellyfin-web's actionsheet.js output,
@@ -185,4 +197,72 @@ test('clicking the menu entry for a movie with no TMDb id closes the opened tab'
     assert.equal(openedTabs.length, 1);
     await waitFor(() => openedTabs[0].closed);
     assert.equal(openedTabs[0].location, null);
+});
+
+test('injects a list view row button between the favourite and more buttons for a Movie row', async () => {
+    const { document } = setup();
+    document.body.innerHTML = listItemHtml('Movie', 'abc');
+
+    const button = await waitFor(() => document.querySelector(LIST_ITEM_BUTTON_SELECTOR));
+
+    const favouriteButton = document.querySelector('[is="emby-ratingbutton"]');
+    const moreButton = document.querySelector('[data-action="menu"]');
+    assert.equal(button.previousElementSibling, favouriteButton);
+    assert.equal(button.nextElementSibling, moreButton);
+    assert.match(button.querySelector('span').className, /star_rate/);
+});
+
+test('does not inject a list view row button for a non-Movie row', async () => {
+    const { document } = setup();
+    document.body.innerHTML = listItemHtml('Series', 'series-1');
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(document.querySelector(LIST_ITEM_BUTTON_SELECTOR), null);
+});
+
+test('does not inject a second list view row button if the row is processed again', async () => {
+    const { document } = setup();
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = listItemHtml('Movie', 'abc');
+    document.body.appendChild(wrapper);
+
+    await waitFor(() => document.querySelector(LIST_ITEM_BUTTON_SELECTOR));
+
+    document.body.removeChild(wrapper);
+    document.body.appendChild(wrapper);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    assert.equal(document.querySelectorAll(LIST_ITEM_BUTTON_SELECTOR).length, 1);
+});
+
+test('clicking a list view row button points the opened tab at the film\'s Letterboxd page', async () => {
+    const { document, window, openedTabs } = setup({
+        itemsById: { abc: { Type: 'Movie', ProviderIds: { Tmdb: '550' } } }
+    });
+    document.body.innerHTML = listItemHtml('Movie', 'abc');
+
+    const button = await waitFor(() => document.querySelector(LIST_ITEM_BUTTON_SELECTOR));
+    button.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+
+    assert.equal(openedTabs.length, 1);
+    await waitFor(() => openedTabs[0].location);
+    assert.equal(openedTabs[0].location, 'https://letterboxd.com/tmdb/550/');
+});
+
+test('clicking a list view row button does not bubble up to trigger the row\'s own click action', async () => {
+    const { document, window } = setup({
+        itemsById: { abc: { Type: 'Movie', ProviderIds: { Tmdb: '550' } } }
+    });
+    document.body.innerHTML = listItemHtml('Movie', 'abc');
+
+    const row = document.querySelector('.listItem');
+    let rowClicked = false;
+    row.addEventListener('click', () => {
+        rowClicked = true;
+    });
+
+    const button = await waitFor(() => document.querySelector(LIST_ITEM_BUTTON_SELECTOR));
+    button.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+
+    assert.equal(rowClicked, false);
 });
