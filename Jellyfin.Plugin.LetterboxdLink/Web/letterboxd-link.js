@@ -2,10 +2,10 @@
  * Letterboxd Link - injected into jellyfin-web's index.html by the
  * LetterboxdLink plugin (via the File Transformation plugin).
  *
- * Adds a button to a movie's details page and to the hover overlay on movie
- * cards, linking to the film's Letterboxd page, resolved from its TMDb id via
- * the (undocumented but long-standing) https://letterboxd.com/tmdb/{tmdbId}/
- * redirect.
+ * Adds a button to a movie's details page, and an entry to the "more" menu
+ * on movie cards, linking to the film's Letterboxd page, resolved from its
+ * TMDb id via the (undocumented but long-standing)
+ * https://letterboxd.com/tmdb/{tmdbId}/ redirect.
  *
  * Pure helper functions live at the top and are exported for unit tests
  * (see test/letterboxd-link.test.js) via the CommonJS guard below them.
@@ -16,10 +16,11 @@
     'use strict';
 
     var BUTTON_CLASS = 'btnLetterboxdLink';
-    var CARD_BUTTON_CLASS = 'btnLetterboxdLinkCard';
+    var MENU_ITEM_CLASS = 'btnLetterboxdLinkMenuItem';
     var DETAILS_ROUTE_PREFIX = '#/details';
     var RETRY_INTERVAL_MS = 500;
     var MAX_RETRY_ATTEMPTS = 20;
+    var PENDING_ITEM_TIMEOUT_MS = 3000;
 
     /**
      * Extracts a usable TMDb id from a Jellyfin BaseItemDto's ProviderIds.
@@ -195,12 +196,66 @@
         });
     }
 
-    // ---- Card / poster overlay button --------------------------------
-    // Movie cards in list views show a hover overlay (play / watched /
-    // favourite / more). Unlike the details page, a card only exposes the
-    // Jellyfin item id in the DOM, not the TMDb id - so the Letterboxd link is
-    // resolved lazily when the button is actually clicked, rather than fetching
-    // every visible movie up front just to render the overlay.
+    // ---- Card meatball-menu entry --------------------------------------
+    // Movie cards in list views show a hover overlay with a "more" (meatball)
+    // button that opens jellyfin-web's item context menu - an action-sheet
+    // popup listing Play, Play All From Here, Copy Stream URL, etc. The
+    // Letterboxd link is added as an entry in that menu (after "Copy Stream
+    // URL"), rather than as its own hover-overlay button, since another
+    // hover button pushes the overlay's width out.
+    //
+    // Cards only expose the Jellyfin item id in the DOM, and the action sheet
+    // itself carries no reference back to the card that opened it, so the
+    // flow is: capture the "more" button click (before jellyfin-web's own
+    // handler consumes it) and remember the item id, then inject a menu entry
+    // for it once the action sheet's markup appears. The remembered id is
+    // cleared after use, or after a short timeout, so a stray click can't
+    // leak into an unrelated action sheet opened later.
+
+    var pendingCardItemId = null;
+    var pendingCardItemTimer = null;
+
+    function rememberPendingCardItem(itemId) {
+        pendingCardItemId = itemId;
+        if (pendingCardItemTimer) {
+            window.clearTimeout(pendingCardItemTimer);
+        }
+        pendingCardItemTimer = window.setTimeout(function () {
+            pendingCardItemId = null;
+            pendingCardItemTimer = null;
+        }, PENDING_ITEM_TIMEOUT_MS);
+    }
+
+    function consumePendingCardItem() {
+        var itemId = pendingCardItemId;
+        pendingCardItemId = null;
+        if (pendingCardItemTimer) {
+            window.clearTimeout(pendingCardItemTimer);
+            pendingCardItemTimer = null;
+        }
+        return itemId;
+    }
+
+    // Capture phase: runs before jellyfin-web's own delegated click handler
+    // (which stops propagation once it recognises the "more" button), for
+    // both the legacy and React card implementations - both mark their
+    // "more" button with data-action="menu".
+    document.addEventListener('click', function (event) {
+        var moreButton = event.target && event.target.closest ? event.target.closest('[data-action="menu"]') : null;
+        if (!moreButton) {
+            return;
+        }
+
+        var card = moreButton.closest('.card');
+        if (!card || card.getAttribute('data-type') !== 'Movie') {
+            return;
+        }
+
+        var itemId = card.getAttribute('data-id');
+        if (itemId) {
+            rememberPendingCardItem(itemId);
+        }
+    }, true);
 
     function openLetterboxdForItem(itemId) {
         var apiClient = window.ApiClient;
@@ -235,67 +290,69 @@
         });
     }
 
-    function createCardButton(itemId) {
+    function createMenuItem(itemId) {
         var button = document.createElement('button');
+        button.setAttribute('is', 'emby-button');
         button.type = 'button';
-        button.className = 'cardOverlayButton cardOverlayButton-hover paper-icon-button-light ' + CARD_BUTTON_CLASS;
-        button.title = 'View on Letterboxd';
+        // Mirrors the markup jellyfin-web's actionsheet.js renders for its own
+        // entries, so this one is styled and laid out identically.
+        button.className = 'listItem listItem-button actionSheetMenuItem ' + MENU_ITEM_CLASS;
+        button.setAttribute('data-id', 'letterboxd-link');
 
         var icon = document.createElement('span');
-        icon.className = 'material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover star_rate';
+        icon.className = 'actionsheetMenuItemIcon listItemIcon listItemIcon-transparent material-icons star_rate';
         icon.setAttribute('aria-hidden', 'true');
         button.appendChild(icon);
 
-        button.addEventListener('click', function (event) {
-            // The overlay container is itself an "itemAction" that navigates to
-            // the Jellyfin item, so stop the click from reaching it.
-            event.preventDefault();
-            event.stopPropagation();
+        var body = document.createElement('div');
+        body.className = 'listItemBody actionsheetListItemBody';
+        var text = document.createElement('div');
+        text.className = 'listItemBodyText actionSheetItemText';
+        text.textContent = 'View on Letterboxd';
+        body.appendChild(text);
+        button.appendChild(body);
+
+        // Runs before the action sheet's own (bubbling) click handler, which
+        // closes the menu once it sees the click land on an
+        // .actionSheetMenuItem - so there's no need to close it here too.
+        button.addEventListener('click', function () {
             openLetterboxdForItem(itemId);
         });
 
         return button;
     }
 
-    function injectCardButton(container) {
-        if (container.querySelector('.' + CARD_BUTTON_CLASS)) {
+    function injectMenuItem(actionSheetEl) {
+        var scroller = actionSheetEl.querySelector('.actionSheetScroller');
+        if (!scroller || scroller.querySelector('.' + MENU_ITEM_CLASS)) {
             return;
         }
 
-        var card = container.closest('.card');
-        if (!card || card.getAttribute('data-type') !== 'Movie') {
-            return;
-        }
-
-        var itemId = card.getAttribute('data-id');
+        var itemId = consumePendingCardItem();
         if (!itemId) {
             return;
         }
 
-        var button = createCardButton(itemId);
-
-        // Place it just before the "more" (meatball) button, i.e. after the
-        // favourite button.
-        var moreIcon = container.querySelector('.material-icons.more_vert');
-        var moreButton = moreIcon ? moreIcon.closest('button') : null;
-        if (moreButton) {
-            container.insertBefore(button, moreButton);
+        var menuItem = createMenuItem(itemId);
+        var afterItem = scroller.querySelector('[data-id="copy-stream"]') || scroller.querySelector('[data-id="download"]');
+        if (afterItem) {
+            afterItem.insertAdjacentElement('afterend', menuItem);
         } else {
-            container.appendChild(button);
+            scroller.appendChild(menuItem);
         }
     }
 
-    // Card hover overlays are created on demand as the user hovers cards, so
-    // only inspect freshly added subtrees rather than rescanning the page.
-    function processCardOverlays(node) {
-        if (node.matches && node.matches('.cardOverlayButton-br')) {
-            injectCardButton(node);
+    // Action sheets are created on demand when a menu is opened, so only
+    // inspect freshly added subtrees rather than rescanning the page.
+    function processActionSheets(node) {
+        if (node.matches && node.matches('.actionSheet')) {
+            injectMenuItem(node);
         }
 
         if (node.querySelectorAll) {
-            var containers = node.querySelectorAll('.cardOverlayButton-br');
-            for (var i = 0; i < containers.length; i++) {
-                injectCardButton(containers[i]);
+            var sheets = node.querySelectorAll('.actionSheet');
+            for (var i = 0; i < sheets.length; i++) {
+                injectMenuItem(sheets[i]);
             }
         }
     }
@@ -336,13 +393,13 @@
             tryInject();
         }
 
-        // Card overlays: inject into any hover menus that have just appeared.
+        // Action sheets: inject into any menus that have just appeared.
         for (var i = 0; i < mutations.length; i++) {
             var addedNodes = mutations[i].addedNodes;
             for (var j = 0; j < addedNodes.length; j++) {
                 var node = addedNodes[j];
                 if (node.nodeType === 1) { // Element nodes only
-                    processCardOverlays(node);
+                    processActionSheets(node);
                 }
             }
         }
