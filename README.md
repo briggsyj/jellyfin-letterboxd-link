@@ -16,8 +16,8 @@ plugin. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for further technical information.
 
 Buttons linking to Letterboxd are added:
-- button (★ icon) appears as a button alongside the existing actions (viewed, favourited) on a movie's
-detail page and movie list view
+- Alongside the existing actions (viewed, favourited) on a movie's
+detail page and movie list view (★ icon)
 - as an option in the "more" (⋮) menu on movie posters and banners in card views
 
 ![The Letterboxd button on a movie detail page](assets/example.png)
