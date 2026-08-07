@@ -2,9 +2,10 @@
  * Letterboxd Link - injected into jellyfin-web's index.html by the
  * LetterboxdLink plugin (via the File Transformation plugin).
  *
- * Adds a button to a movie's details page, and an entry to the "more" menu
- * on movie cards, linking to the film's Letterboxd page, resolved from its
- * TMDb id via the (undocumented but long-standing)
+ * Adds a button to a movie's details page, a button to movie rows in list
+ * views (between the favourite and "more" buttons), and an entry to the
+ * "more" menu on movie cards, all linking to the film's Letterboxd page,
+ * resolved from its TMDb id via the (undocumented but long-standing)
  * https://letterboxd.com/tmdb/{tmdbId}/ redirect.
  *
  * Pure helper functions live at the top and are exported for unit tests
@@ -17,6 +18,7 @@
 
     var BUTTON_CLASS = 'btnLetterboxdLink';
     var MENU_ITEM_CLASS = 'btnLetterboxdLinkMenuItem';
+    var LIST_ITEM_BUTTON_CLASS = 'btnLetterboxdLinkListItem';
     var DETAILS_ROUTE_PREFIX = '#/details';
     var RETRY_INTERVAL_MS = 500;
     var MAX_RETRY_ATTEMPTS = 20;
@@ -357,6 +359,73 @@
         }
     }
 
+    // ---- List view row button -------------------------------------------
+    // Movie rows in list views (jellyfin-web's listview.js) render their own
+    // favourite and "more" buttons directly in the markup, each carrying the
+    // item id already - unlike cards, there's no click-to-open-menu step to
+    // hook, so the Letterboxd button is inserted straight into that row
+    // between them, resolving the link lazily on click like the card menu
+    // entry does.
+
+    function createListItemButton(itemId) {
+        var button = document.createElement('button');
+        button.setAttribute('is', 'paper-icon-button-light');
+        button.type = 'button';
+        button.className = 'listItemButton ' + LIST_ITEM_BUTTON_CLASS;
+        button.title = 'View on Letterboxd';
+
+        var icon = document.createElement('span');
+        icon.className = 'material-icons star_rate';
+        icon.setAttribute('aria-hidden', 'true');
+        button.appendChild(icon);
+
+        // Stops the click from bubbling up to jellyfin-web's row-level
+        // itemAction handler, which would otherwise treat it as a click on
+        // the row itself and navigate to the item's details page.
+        button.addEventListener('click', function (event) {
+            event.stopPropagation();
+            openLetterboxdForItem(itemId);
+        });
+
+        return button;
+    }
+
+    function injectListItemButton(listItem) {
+        var container = listItem.querySelector('.listViewUserDataButtons');
+        if (!container || container.querySelector('.' + LIST_ITEM_BUTTON_CLASS)) {
+            return;
+        }
+
+        var itemId = listItem.getAttribute('data-id');
+        if (!itemId) {
+            return;
+        }
+
+        var button = createListItemButton(itemId);
+        var moreButton = container.querySelector('[data-action="menu"]');
+        if (moreButton) {
+            container.insertBefore(button, moreButton);
+        } else {
+            container.appendChild(button);
+        }
+    }
+
+    // List items, unlike action sheets, can already be present when a
+    // freshly added subtree is inspected (e.g. a whole list view rendering
+    // at once), so both the subtree root and its descendants are checked.
+    function processListItems(node) {
+        if (node.matches && node.matches('.listItem[data-type="Movie"]')) {
+            injectListItemButton(node);
+        }
+
+        if (node.querySelectorAll) {
+            var items = node.querySelectorAll('.listItem[data-type="Movie"]');
+            for (var i = 0; i < items.length; i++) {
+                injectListItemButton(items[i]);
+            }
+        }
+    }
+
     // The details page (and its buttons) can render asynchronously after
     // route/DOM changes, so a single attempt right after navigation is not
     // reliable. Poll briefly until the buttons container shows up.
@@ -393,13 +462,15 @@
             tryInject();
         }
 
-        // Action sheets: inject into any menus that have just appeared.
+        // Action sheets and list view rows: inject into any that have just
+        // appeared.
         for (var i = 0; i < mutations.length; i++) {
             var addedNodes = mutations[i].addedNodes;
             for (var j = 0; j < addedNodes.length; j++) {
                 var node = addedNodes[j];
                 if (node.nodeType === 1) { // Element nodes only
                     processActionSheets(node);
+                    processListItems(node);
                 }
             }
         }

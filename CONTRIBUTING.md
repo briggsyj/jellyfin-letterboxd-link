@@ -11,10 +11,17 @@ please keep changes minimal rather than adding config or features speculatively.
   `AssemblyLoadContext`). That transformation injects a `<script>` tag into
   jellyfin-web's `index.html`, pointing at a script served by the plugin's own
   controller.
-- **Client** (`Web/letterboxd-link.js`) adds the button in two places:
+- **Client** (`Web/letterboxd-link.js`) adds the button in three places:
   - **Details page** (`#/details?id=...`): looks the item up via
     `window.ApiClient` and renders a button if the movie has a TMDb id (no id,
     no button — never a dead link).
+  - **List view rows** (`listview.js`'s `.listItem` markup): each row already
+    carries the item id and renders its own favourite/"more" buttons inside a
+    `.listViewUserDataButtons` container, so a button is inserted directly
+    between them. Unlike the card case below, no click-to-open-menu step is
+    needed since the id is already on the row. The button's own click handler
+    calls `stopPropagation()` so the click doesn't also trigger the row's
+    itemAction (which would otherwise navigate to the details page).
   - **Movie cards**: adds an entry to the "more" (meatball) button's item
     context menu, after "Copy Stream URL", rather than a hover-overlay button —
     an extra hover button pushes the overlay's width out. Cards only expose the
@@ -27,8 +34,9 @@ please keep changes minimal rather than adding config or features speculatively.
     id). The tab must open synchronously in the click handler, or popup blockers
     reject it after the async lookup.
 
-Both injection points target jellyfin-web's DOM, not a stable API, so they
-depend on its current markup (`.itemDetailPage`/`.mainDetailButtons`,
+All three injection points target jellyfin-web's DOM, not a stable API, so
+they depend on its current markup (`.itemDetailPage`/`.mainDetailButtons`,
+`.listItem[data-type]`/`.listViewUserDataButtons`,
 `.card[data-type]`/`[data-action="menu"]`/`.actionSheet`/`.actionSheetScroller`).
 A markup change can make a button silently disappear and need a follow-up PR —
 the card menu entry most of all, as jellyfin-web is migrating cards to React
