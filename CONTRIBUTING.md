@@ -15,19 +15,27 @@ please keep changes minimal rather than adding config or features speculatively.
   - **Details page** (`#/details?id=...`): looks the item up via
     `window.ApiClient` and renders a button if the movie has a TMDb id (no id,
     no button — never a dead link).
-  - **Movie cards**: injects a button into the hover overlay, before the "more"
-    button. Cards expose only the item id in the DOM, so — to avoid an API call
-    per visible card — the link resolves on click: open a blank tab, look the
+  - **Movie cards**: adds an entry to the "more" (meatball) button's item
+    context menu, after "Copy Stream URL", rather than a hover-overlay button —
+    an extra hover button pushes the overlay's width out. Cards only expose the
+    item id in the DOM, and the action sheet itself carries no reference back
+    to the card that opened it, so the item id is captured on the "more"
+    button's click (before jellyfin-web's own handler consumes it) and
+    remembered briefly until the action sheet appears. The Letterboxd link
+    itself then resolves on click of the new entry: open a blank tab, look the
     item up, then point the tab at Letterboxd (or close it if there's no TMDb
     id). The tab must open synchronously in the click handler, or popup blockers
     reject it after the async lookup.
 
 Both injection points target jellyfin-web's DOM, not a stable API, so they
 depend on its current markup (`.itemDetailPage`/`.mainDetailButtons`,
-`.card[data-type]`/`.cardOverlayButton-br`). A markup change can make a button
-silently disappear and need a follow-up PR — the card button most of all, as
-jellyfin-web is migrating to a React card with a different overlay. When
-changing selectors, note the jellyfin-web version you tested against.
+`.card[data-type]`/`[data-action="menu"]`/`.actionSheet`/`.actionSheetScroller`).
+A markup change can make a button silently disappear and need a follow-up PR —
+the card menu entry most of all, as jellyfin-web is migrating cards to React
+(confirmed as of 10.11.11: the React card still uses `[data-action="menu"]`
+and the same `.actionSheet` markup as the legacy one, so the same selectors
+cover both). When changing selectors, note the jellyfin-web version you tested
+against.
 
 The `letterboxd.com/tmdb/{id}/` redirect is undocumented but long-stable. If it
 breaks, the fallback would be Letterboxd's public search (out of scope for now).
