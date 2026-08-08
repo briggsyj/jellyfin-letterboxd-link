@@ -20,6 +20,11 @@
     var MENU_ITEM_CLASS = 'btnLetterboxdLinkMenuItem';
     var LIST_ITEM_BUTTON_CLASS = 'btnLetterboxdLinkListItem';
     var DETAILS_ROUTE_PREFIX = '#/details';
+    // Records which item a details page's buttons container has already been
+    // resolved for. Tracked on the container rather than inferred from the
+    // button's presence, because "this movie has no TMDb id" is a settled
+    // answer that renders no button and must not be re-fetched forever.
+    var HANDLED_ATTRIBUTE = 'data-letterboxd-handled';
     var RETRY_INTERVAL_MS = 500;
     var MAX_RETRY_ATTEMPTS = 20;
     var PENDING_ITEM_TIMEOUT_MS = 3000;
@@ -165,6 +170,13 @@
     // navigated to a different item (or away from the details page).
     var lastRequestedItemId = null;
 
+    function clearHandledMarkers() {
+        var handled = document.querySelectorAll('[' + HANDLED_ATTRIBUTE + ']');
+        for (var i = 0; i < handled.length; i++) {
+            handled[i].removeAttribute(HANDLED_ATTRIBUTE);
+        }
+    }
+
     function tryInject() {
         var hash = window.location.hash || '';
         if (!isDetailsRoute(hash)) {
@@ -178,10 +190,15 @@
         }
 
         var container = findDetailButtonsContainer();
-        if (!container) {
+        if (!container || container.getAttribute(HANDLED_ATTRIBUTE) === itemId) {
             return;
         }
 
+        // Claim the container before the lookup starts. The details page makes
+        // many batches of DOM changes while it renders, and the observer below
+        // calls this on each of them, so without the claim every batch would
+        // start another lookup for the same item.
+        container.setAttribute(HANDLED_ATTRIBUTE, itemId);
         lastRequestedItemId = itemId;
 
         apiClient.getItem(apiClient.getCurrentUserId(), itemId).then(function (item) {
@@ -191,10 +208,13 @@
 
             var currentContainer = findDetailButtonsContainer();
             if (currentContainer) {
+                currentContainer.setAttribute(HANDLED_ATTRIBUTE, itemId);
                 renderButton(currentContainer, item);
             }
         }).catch(function () {
-            // Item fetch failed - leave no button rather than a broken one.
+            // Item fetch failed - leave no button rather than a broken one,
+            // but release the claim so a later attempt can retry.
+            container.removeAttribute(HANDLED_ATTRIBUTE);
         });
     }
 
@@ -452,15 +472,20 @@
         }, RETRY_INTERVAL_MS);
     }
 
-    window.addEventListener('hashchange', scheduleRetries);
+    window.addEventListener('hashchange', function () {
+        // A route change can leave the same container element in place while
+        // jellyfin-web re-renders its buttons, wiping ours. Drop the markers
+        // so the current route is resolved from scratch.
+        clearHandledMarkers();
+        scheduleRetries();
+    });
 
     var observer = new MutationObserver(function (mutations) {
         // Details page: fallback for when its content is replaced without a
         // hashchange event (e.g. navigating between items in the same list).
-        var hash = window.location.hash || '';
-        if (isDetailsRoute(hash) && findDetailButtonsContainer() && !document.querySelector('.' + BUTTON_CLASS)) {
-            tryInject();
-        }
+        // tryInject() is a no-op unless the container is present and not yet
+        // resolved for the current item, so calling it per batch is cheap.
+        tryInject();
 
         // Action sheets and list view rows: inject into any that have just
         // appeared.

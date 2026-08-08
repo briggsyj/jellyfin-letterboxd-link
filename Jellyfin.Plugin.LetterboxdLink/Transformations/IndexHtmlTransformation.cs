@@ -67,9 +67,12 @@ public static class IndexHtmlTransformation
             normalizedBaseUrl,
             ScriptRoute);
 
+        // Leave anything without a closing body tag untouched rather than
+        // appending blindly: File Transformation matches file name patterns
+        // loosely, so a non-HTML file reaching us would otherwise be corrupted.
         int bodyCloseIndex = html.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
         return bodyCloseIndex < 0
-            ? html + scriptTag
+            ? html
             : html.Insert(bodyCloseIndex, scriptTag);
     }
 }
