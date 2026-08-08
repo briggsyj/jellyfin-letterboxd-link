@@ -18,6 +18,7 @@ const SCRIPT_SOURCE = fs.readFileSync(
 
 const MENU_ITEM_SELECTOR = '.btnLetterboxdLinkMenuItem';
 const LIST_ITEM_BUTTON_SELECTOR = '.btnLetterboxdLinkListItem';
+const DETAIL_BUTTON_SELECTOR = '.btnLetterboxdLink';
 
 // Builds a movie card whose hover overlay contains a "more" button, mirroring
 // jellyfin-web's cardBuilder overlay markup (data-action="menu" is present on
@@ -53,10 +54,21 @@ function actionSheetHtml() {
         + '</div></div></div>';
 }
 
+// Builds the details page markup the button is inserted into, mirroring
+// jellyfin-web's itemDetailPage: .mainDetailButtons holds the row of detail
+// buttons, ending with the "more commands" button.
+function detailPageHtml() {
+    return '<div class="itemDetailPage">'
+        + '<div class="mainDetailButtons">'
+        + '<button class="btnPlay detailButton"></button>'
+        + '<button class="btnMoreCommands detailButton"></button>'
+        + '</div></div>';
+}
+
 function setup(options) {
     options = options || {};
     const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
-        url: 'https://jellyfin.test/web/',
+        url: 'https://jellyfin.test/web/' + (options.hash || ''),
         runScripts: 'outside-only'
     });
     const window = dom.window;
@@ -68,9 +80,11 @@ function setup(options) {
         return tab;
     };
 
+    const getItemCalls = [];
     window.ApiClient = {
         getCurrentUserId() { return 'user-1'; },
         getItem(userId, itemId) {
+            getItemCalls.push(itemId);
             return Promise.resolve(options.itemsById ? options.itemsById[itemId] : undefined);
         }
     };
@@ -78,7 +92,17 @@ function setup(options) {
     // Run the plugin's injected script in the jsdom window context.
     window.eval(SCRIPT_SOURCE);
 
-    return { dom, window, document: window.document, openedTabs };
+    return { dom, window, document: window.document, openedTabs, getItemCalls };
+}
+
+// Appends throwaway elements one at a time so each lands in its own
+// MutationObserver batch, standing in for the many batches jellyfin-web's
+// details page produces as it renders.
+async function churnDom(document, batches) {
+    for (let i = 0; i < batches; i++) {
+        document.body.appendChild(document.createElement('div'));
+        await new Promise((resolve) => setTimeout(resolve, 5));
+    }
 }
 
 async function waitFor(predicate, timeoutMs) {
@@ -102,6 +126,48 @@ function clickMoreButton(document) {
     const moreButton = document.querySelector('.moreBtn');
     moreButton.dispatchEvent(new document.defaultView.MouseEvent('click', { bubbles: true, cancelable: true }));
 }
+
+test('injects the details page button before the "more commands" button', async () => {
+    const { document } = setup({
+        hash: '#/details?id=abc',
+        itemsById: { abc: { Type: 'Movie', ProviderIds: { Tmdb: '550' } } }
+    });
+    document.body.innerHTML = detailPageHtml();
+
+    const button = await waitFor(() => document.querySelector(DETAIL_BUTTON_SELECTOR));
+
+    assert.equal(button.nextElementSibling, document.querySelector('.btnMoreCommands'));
+    assert.equal(button.href, 'https://letterboxd.com/tmdb/550/');
+});
+
+test('looks the details page item up once, not once per batch of DOM changes', async () => {
+    const { document, getItemCalls } = setup({
+        hash: '#/details?id=abc',
+        itemsById: { abc: { Type: 'Movie', ProviderIds: { Tmdb: '550' } } }
+    });
+    document.body.innerHTML = detailPageHtml();
+
+    await waitFor(() => document.querySelector(DETAIL_BUTTON_SELECTOR));
+    await churnDom(document, 5);
+
+    assert.deepEqual(getItemCalls, ['abc']);
+});
+
+test('stops re-requesting a details page movie that has no TMDb id', async () => {
+    // The worst case for a presence-of-the-button guard: the settled answer
+    // is "no button", so nothing in the DOM records that the item was resolved.
+    const { document, getItemCalls } = setup({
+        hash: '#/details?id=abc',
+        itemsById: { abc: { Type: 'Movie', ProviderIds: {} } }
+    });
+    document.body.innerHTML = detailPageHtml();
+
+    await waitFor(() => getItemCalls.length > 0);
+    await churnDom(document, 5);
+
+    assert.equal(document.querySelector(DETAIL_BUTTON_SELECTOR), null);
+    assert.deepEqual(getItemCalls, ['abc']);
+});
 
 test('injects a menu entry after "Copy Stream URL" once the action sheet for a Movie card appears', async () => {
     const { window, document } = setup();

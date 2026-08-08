@@ -11,10 +11,24 @@ please keep changes minimal rather than adding config or features speculatively.
   `AssemblyLoadContext`). That transformation injects a `<script>` tag into
   jellyfin-web's `index.html`, pointing at a script served by the plugin's own
   controller.
+
+  `fileNamePattern` is an **unanchored regex**, not a file name, and File
+  Transformation tests it against every path jellyfin-web serves — a literal
+  `index.html` also matches e.g. `..._login_index_html.<hash>.chunk.js`, whose
+  contents then get a `<script>` tag appended to them. Hence `^/?index\.html$`
+  (the leading slash is optional because File Transformation matches the raw
+  request subpath in `NeedsTransformation` and the slash-trimmed one in
+  `RunTransformation`), plus `InjectScriptTag` refusing to touch anything with
+  no closing `</body>`.
 - **Client** (`Web/letterboxd-link.js`) adds the button in three places:
   - **Details page** (`#/details?id=...`): looks the item up via
     `window.ApiClient` and renders a button if the movie has a TMDb id (no id,
-    no button — never a dead link).
+    no button — never a dead link). The buttons container is stamped with
+    `data-letterboxd-handled="<item id>"` once resolved. The MutationObserver
+    fires on every batch of DOM changes the page makes while rendering, so
+    without that marker each batch would start another item lookup — and for a
+    movie with no TMDb id, where the settled answer leaves no button in the DOM
+    to detect, it would never stop.
   - **List view rows** (`listview.js`'s `.listItem` markup): each row already
     carries the item id and renders its own favourite/"more" buttons inside a
     `.listViewUserDataButtons` container, so a button is inserted directly

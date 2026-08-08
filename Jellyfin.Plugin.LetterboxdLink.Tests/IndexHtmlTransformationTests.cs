@@ -51,15 +51,14 @@ public class IndexHtmlTransformationTests
         Assert.Equal(2, secondPass.Split("<script").Length); // exactly one occurrence of "<script"
     }
 
-    [Fact]
-    public void InjectScriptTag_AppendsToEndWhenNoClosingBodyTag()
+    [Theory]
+    [InlineData("<html><body>")]
+    [InlineData("\"use strict\";(self.webpackChunk=self.webpackChunk||[]).push([[17244],{}]);")]
+    public void InjectScriptTag_LeavesContentWithoutClosingBodyTagUnchanged(string contents)
     {
-        const string html = "<html><body>";
+        string result = IndexHtmlTransformation.InjectScriptTag(contents, string.Empty);
 
-        string result = IndexHtmlTransformation.InjectScriptTag(html, string.Empty);
-
-        Assert.StartsWith(html, result);
-        Assert.Contains("<script", result);
+        Assert.Equal(contents, result);
     }
 
     [Fact]

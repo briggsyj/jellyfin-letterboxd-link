@@ -53,7 +53,12 @@ public sealed class FileTransformationRegistrar : IHostedService, IDisposable
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _timer = new Timer(_ => TryRegister(), null, TimeSpan.Zero, RetryInterval);
+        // Created stopped, then started, so _timer is assigned before the
+        // first callback can run. Passing TimeSpan.Zero to the constructor
+        // would let the callback fire on a thread pool thread before the
+        // assignment completes, leaving it unable to stop the retry loop.
+        _timer = new Timer(_ => TryRegister(), null, Timeout.Infinite, Timeout.Infinite);
+        _timer.Change(TimeSpan.Zero, RetryInterval);
         return Task.CompletedTask;
     }
 
@@ -72,16 +77,23 @@ public sealed class FileTransformationRegistrar : IHostedService, IDisposable
 
     private void TryRegister()
     {
-        _attempts++;
+        int attempt = Interlocked.Increment(ref _attempts);
 
         bool registered;
         try
         {
             registered = RegisterTransformation();
         }
-        catch (Exception ex) when (ex is TargetInvocationException or MemberAccessException)
+#pragma warning disable CA1031 // Do not catch general exception types
+        catch (Exception ex)
+#pragma warning restore CA1031
         {
-            _logger.LogWarning(ex, "Failed to register with the File Transformation plugin on attempt {Attempt}.", _attempts);
+            // This runs on a timer thread, where an escaping exception would
+            // tear down the whole server. Reflecting over another plugin's
+            // types can fail in more ways than are worth enumerating (missing
+            // dependencies, overload ambiguity, whatever their callback
+            // throws), so nothing may get out - a failed attempt just retries.
+            _logger.LogWarning(ex, "Failed to register with the File Transformation plugin on attempt {Attempt}.", attempt);
             registered = false;
         }
 
@@ -92,12 +104,12 @@ public sealed class FileTransformationRegistrar : IHostedService, IDisposable
             return;
         }
 
-        if (_attempts >= MaxAttempts)
+        if (attempt >= MaxAttempts)
         {
             _logger.LogWarning(
                 "File Transformation plugin was not found after {Attempts} attempts. " +
                 "Install and enable the File Transformation plugin, then restart Jellyfin, for the Letterboxd link button to appear.",
-                _attempts);
+                attempt);
             _timer?.Change(Timeout.Infinite, Timeout.Infinite);
         }
     }
@@ -143,7 +155,12 @@ public sealed class FileTransformationRegistrar : IHostedService, IDisposable
         string payloadJson = JsonSerializer.Serialize(new
         {
             id = TransformationId,
-            fileNamePattern = "index.html",
+            // An unanchored regex, not a literal: File Transformation matches it
+            // against every path jellyfin-web serves. "index.html" would also match
+            // e.g. "..._login_index_html.<hash>.chunk.js". The optional leading slash
+            // is needed because File Transformation matches the raw request subpath
+            // in NeedsTransformation and the slash-trimmed one in RunTransformation.
+            fileNamePattern = @"^/?index\.html$",
             callbackAssembly = typeof(IndexHtmlTransformation).Assembly.FullName,
             callbackClass = typeof(IndexHtmlTransformation).FullName,
             callbackMethod = nameof(IndexHtmlTransformation.Inject)
