@@ -10,6 +10,14 @@
         "imageUrl": "https://briggsyj.github.io/jellyfin-letterboxd-link/letterboxd-link/manifest-banner.png",
         "versions": [
             {
+                "version": "1.5.0.0",
+                "changelog": "1.0.0.0 - Initial release: adds a Letterboxd link button to movie detail pages.\n",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": "https://briggsyj.github.io/jellyfin-letterboxd-link/letterboxd-link/letterboxd-link_1.5.0.0.zip",
+                "checksum": "da0528c93681a28b2dcdcb87f4e05546",
+                "timestamp": "2026-08-14T02:01:38Z"
+            },
+            {
                 "version": "1.4.0.0",
                 "changelog": "1.0.0.0 - Initial release: adds a Letterboxd link button to movie detail pages.\n",
                 "targetAbi": "10.11.0.0",
