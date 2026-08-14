@@ -127,6 +127,13 @@ function clickMoreButton(document) {
     moreButton.dispatchEvent(new document.defaultView.MouseEvent('click', { bubbles: true, cancelable: true }));
 }
 
+// Right-clicking the card (rather than its "more" button) opens the same
+// action sheet in jellyfin-web via a contextmenu event on the card itself.
+function rightClickCard(document) {
+    const card = document.querySelector('.card');
+    card.dispatchEvent(new document.defaultView.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+}
+
 test('injects the details page button before the "more commands" button', async () => {
     const { document } = setup({
         hash: '#/details?id=abc',
@@ -183,6 +190,31 @@ test('injects a menu entry after "Copy Stream URL" once the action sheet for a M
     assert.match(menuItem.querySelector('span').className, /star_rate/);
     assert.equal(menuItem.querySelector('.listItemBodyText').textContent, 'View on Letterboxd');
     void window;
+});
+
+test('injects a menu entry when the action sheet is opened by right-clicking a Movie card', async () => {
+    const { document } = setup();
+    document.body.innerHTML = cardHtml('Movie', 'abc');
+
+    rightClickCard(document);
+    document.body.insertAdjacentHTML('beforeend', actionSheetHtml());
+
+    const menuItem = await waitFor(() => document.querySelector(MENU_ITEM_SELECTOR));
+
+    const copyStreamButton = document.querySelector('[data-id="copy-stream"]');
+    assert.equal(menuItem.previousElementSibling, copyStreamButton);
+    assert.equal(menuItem.querySelector('.listItemBodyText').textContent, 'View on Letterboxd');
+});
+
+test('does not inject a menu entry when right-clicking a non-Movie card', async () => {
+    const { document } = setup();
+    document.body.innerHTML = cardHtml('Series', 'series-1');
+
+    rightClickCard(document);
+    document.body.insertAdjacentHTML('beforeend', actionSheetHtml());
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(document.querySelector(MENU_ITEM_SELECTOR), null);
 });
 
 test('does not inject a menu entry for a non-Movie card', async () => {
