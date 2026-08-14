@@ -120,6 +120,16 @@
         return null;
     }
 
+    // Every Letterboxd control uses the same star glyph, so this builds the
+    // material-icons span (with its aria-hidden flag) and leaves each caller
+    // to supply only the context-specific class names.
+    function createIcon(className) {
+        var icon = document.createElement('span');
+        icon.className = className;
+        icon.setAttribute('aria-hidden', 'true');
+        return icon;
+    }
+
     function createButton(tmdbId) {
         var anchor = document.createElement('a');
         anchor.setAttribute('is', 'emby-linkbutton');
@@ -131,12 +141,8 @@
 
         var content = document.createElement('div');
         content.className = 'detailButton-content';
+        content.appendChild(createIcon('material-icons detailButton-icon star_rate'));
 
-        var icon = document.createElement('span');
-        icon.className = 'material-icons detailButton-icon star_rate';
-        icon.setAttribute('aria-hidden', 'true');
-
-        content.appendChild(icon);
         anchor.appendChild(content);
         return anchor;
     }
@@ -228,11 +234,15 @@
     //
     // Cards only expose the Jellyfin item id in the DOM, and the action sheet
     // itself carries no reference back to the card that opened it, so the
-    // flow is: capture the "more" button click (before jellyfin-web's own
-    // handler consumes it) and remember the item id, then inject a menu entry
-    // for it once the action sheet's markup appears. The remembered id is
-    // cleared after use, or after a short timeout, so a stray click can't
-    // leak into an unrelated action sheet opened later.
+    // flow is: capture the interaction that opens the sheet (before
+    // jellyfin-web's own handler consumes it) and remember the item id, then
+    // inject a menu entry for it once the action sheet's markup appears. The
+    // remembered id is cleared after use, or after a short timeout, so a stray
+    // interaction can't leak into an unrelated action sheet opened later.
+    //
+    // The sheet can be opened two ways: a left-click on the "more" (meatball)
+    // button, or a right-click (contextmenu) anywhere on the card - both open
+    // the same item action sheet, so both are captured below.
 
     var pendingCardItemId = null;
     var pendingCardItemTimer = null;
@@ -258,17 +268,10 @@
         return itemId;
     }
 
-    // Capture phase: runs before jellyfin-web's own delegated click handler
-    // (which stops propagation once it recognises the "more" button), for
-    // both the legacy and React card implementations - both mark their
-    // "more" button with data-action="menu".
-    document.addEventListener('click', function (event) {
-        var moreButton = event.target && event.target.closest ? event.target.closest('[data-action="menu"]') : null;
-        if (!moreButton) {
-            return;
-        }
-
-        var card = moreButton.closest('.card');
+    // Finds the movie card the given element belongs to and, if it's a movie,
+    // remembers its item id so the pending action sheet gets a menu entry.
+    function rememberCardFromElement(element) {
+        var card = element && element.closest ? element.closest('.card') : null;
         if (!card || card.getAttribute('data-type') !== 'Movie') {
             return;
         }
@@ -277,6 +280,24 @@
         if (itemId) {
             rememberPendingCardItem(itemId);
         }
+    }
+
+    // Capture phase: runs before jellyfin-web's own delegated click handler
+    // (which stops propagation once it recognises the "more" button), for
+    // both the legacy and React card implementations - both mark their
+    // "more" button with data-action="menu".
+    document.addEventListener('click', function (event) {
+        var moreButton = event.target && event.target.closest ? event.target.closest('[data-action="menu"]') : null;
+        if (moreButton) {
+            rememberCardFromElement(moreButton);
+        }
+    }, true);
+
+    // Right-clicking (or long-pressing) a card opens the same item action
+    // sheet without ever touching the "more" button, so capture contextmenu
+    // events on the card itself too.
+    document.addEventListener('contextmenu', function (event) {
+        rememberCardFromElement(event.target);
     }, true);
 
     function openLetterboxdForItem(itemId) {
@@ -321,10 +342,7 @@
         button.className = 'listItem listItem-button actionSheetMenuItem ' + MENU_ITEM_CLASS;
         button.setAttribute('data-id', 'letterboxd-link');
 
-        var icon = document.createElement('span');
-        icon.className = 'actionsheetMenuItemIcon listItemIcon listItemIcon-transparent material-icons star_rate';
-        icon.setAttribute('aria-hidden', 'true');
-        button.appendChild(icon);
+        button.appendChild(createIcon('actionsheetMenuItemIcon listItemIcon listItemIcon-transparent material-icons star_rate'));
 
         var body = document.createElement('div');
         body.className = 'listItemBody actionsheetListItemBody';
@@ -364,17 +382,20 @@
         }
     }
 
-    // Action sheets are created on demand when a menu is opened, so only
-    // inspect freshly added subtrees rather than rescanning the page.
-    function processActionSheets(node) {
-        if (node.matches && node.matches('.actionSheet')) {
-            injectMenuItem(node);
+    // Runs `inject` over a freshly added subtree: on the node itself if it
+    // matches `selector`, and on any matching descendants - the subtree can be
+    // the element of interest (e.g. a single action sheet) or a container of
+    // several (e.g. a whole list view rendering at once). Only newly added
+    // subtrees are inspected, rather than rescanning the page on every mutation.
+    function injectIntoMatches(node, selector, inject) {
+        if (node.matches && node.matches(selector)) {
+            inject(node);
         }
 
         if (node.querySelectorAll) {
-            var sheets = node.querySelectorAll('.actionSheet');
-            for (var i = 0; i < sheets.length; i++) {
-                injectMenuItem(sheets[i]);
+            var matches = node.querySelectorAll(selector);
+            for (var i = 0; i < matches.length; i++) {
+                inject(matches[i]);
             }
         }
     }
@@ -394,10 +415,7 @@
         button.className = 'listItemButton ' + LIST_ITEM_BUTTON_CLASS;
         button.title = 'View on Letterboxd';
 
-        var icon = document.createElement('span');
-        icon.className = 'material-icons star_rate';
-        icon.setAttribute('aria-hidden', 'true');
-        button.appendChild(icon);
+        button.appendChild(createIcon('material-icons star_rate'));
 
         // Stops the click from bubbling up to jellyfin-web's row-level
         // itemAction handler, which would otherwise treat it as a click on
@@ -427,22 +445,6 @@
             container.insertBefore(button, moreButton);
         } else {
             container.appendChild(button);
-        }
-    }
-
-    // List items, unlike action sheets, can already be present when a
-    // freshly added subtree is inspected (e.g. a whole list view rendering
-    // at once), so both the subtree root and its descendants are checked.
-    function processListItems(node) {
-        if (node.matches && node.matches('.listItem[data-type="Movie"]')) {
-            injectListItemButton(node);
-        }
-
-        if (node.querySelectorAll) {
-            var items = node.querySelectorAll('.listItem[data-type="Movie"]');
-            for (var i = 0; i < items.length; i++) {
-                injectListItemButton(items[i]);
-            }
         }
     }
 
@@ -494,8 +496,8 @@
             for (var j = 0; j < addedNodes.length; j++) {
                 var node = addedNodes[j];
                 if (node.nodeType === 1) { // Element nodes only
-                    processActionSheets(node);
-                    processListItems(node);
+                    injectIntoMatches(node, '.actionSheet', injectMenuItem);
+                    injectIntoMatches(node, '.listItem[data-type="Movie"]', injectListItemButton);
                 }
             }
         }
