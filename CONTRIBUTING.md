@@ -53,18 +53,23 @@ they depend on its current markup (`.itemDetailPage`/`.mainDetailButtons`,
 `.listItem[data-type]`/`.listViewUserDataButtons`,
 `.card[data-type]`/`[data-action="menu"]`/`.actionSheet`/`.actionSheetScroller`).
 A markup change can make a button silently disappear and need a follow-up PR —
-the card menu entry most of all, as jellyfin-web is migrating cards to React
-(confirmed as of 10.11.11: the React card still uses `[data-action="menu"]`
-and the same `.actionSheet` markup as the legacy one, so the same selectors
-cover both). When changing selectors, note the jellyfin-web version you tested
-against.
+the card menu entry most of all, as jellyfin-web is migrating cards and list
+views to React under `src/apps/modern`. Confirmed as of jellyfin-web 12.0: the
+item details page shell (`.itemDetailPage`/`.mainDetailButtons`) is still
+legacy-rendered markup even though individual buttons like "more commands"
+are now React components mounted into it, and the React list/menu components
+(`ListViewUserDataButtons`, `MoreVertIconButton`) deliberately keep the same
+`data-id`/`data-type`/`data-action="menu"` attributes and `.actionSheet`/
+`.actionSheetScroller` markup as the legacy versions, so the existing
+selectors cover both. When changing selectors, note the jellyfin-web version
+you tested against.
 
 The `letterboxd.com/tmdb/{id}/` redirect is undocumented but long-stable. If it
 breaks, the fallback would be Letterboxd's public search (out of scope for now).
 
 ## Dev setup
 
-Requires the .NET 9 SDK and Node 22.22+ (jsdom's floor; LTS 22 or 24).
+Requires the .NET 10 SDK and Node 22.22+ (jsdom's floor; LTS 22 or 24).
 
 ```bash
 dotnet test          # C# tests (mainly IndexHtmlTransformation)
@@ -72,8 +77,19 @@ npm ci && npm test   # JS tests: pure helpers + jsdom DOM/behaviour tests
 ```
 
 To try a change on a real server, `dotnet publish Jellyfin.Plugin.LetterboxdLink
--c Release` and copy `bin/Release/net9.0/publish/*` into
+-c Release` and copy `bin/Release/net10.0/publish/*` into
 `<jellyfin-data-dir>/plugins/LetterboxdLink/`, then restart Jellyfin.
+
+### Jellyfin 10.11 support
+
+`main` targets Jellyfin 12.0 (net10.0, `Jellyfin.Controller`/`Jellyfin.Model` 12.0.0).
+The [`jellyfin-10.11`](../../tree/jellyfin-10.11) branch is a frozen snapshot of the
+last 10.11-targeted state (net9.0, packages pinned to 10.11.11, `build.yaml`
+`targetAbi: 10.11.0.0`) kept around so 10.11 users keep getting a working plugin.
+Cut any 10.11 patch releases from that branch; the plugin repository manifest
+accumulates versions across both, and each server only ever sees the
+highest version whose `targetAbi` it satisfies. Backport fixes there only if
+they don't depend on 12.0-only APIs.
 
 ## Code style
 
