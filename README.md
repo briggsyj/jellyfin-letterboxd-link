@@ -24,7 +24,7 @@ detail page and movie list view (★ icon)
 
 ## Requirements
 
-- Jellyfin server **12.0.x** (for Jellyfin **10.11.x**, use the release built from the
+- Jellyfin server **12.1.x** (for Jellyfin **10.11.x**, use the release built from the
   [`jellyfin-10.11`](../../tree/jellyfin-10.11) branch instead - the plugin repository manifest
   serves whichever build matches your server automatically).
 - The [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation)

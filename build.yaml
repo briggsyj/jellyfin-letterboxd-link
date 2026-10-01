@@ -2,7 +2,7 @@
 name: "Letterboxd Link"
 guid: "81fd3f59-6723-456e-9224-084444970919"
 version: "2.0.0.0"
-targetAbi: "12.0.0.0"
+targetAbi: "12.1.0.0"
 framework: "net10.0"
 owner: "briggsyj"
 image: "assets/manifest-banner.png"
@@ -17,7 +17,7 @@ artifacts:
 - "Jellyfin.Plugin.LetterboxdLink.dll"
 changelog: >
   2.0.0.0
-  - Target Jellyfin 12.0 (net10.0). Jellyfin 10.11.x users should stay on
+  - Target Jellyfin 12.1 (net10.0). Jellyfin 10.11.x users should stay on
     the 1.x releases; see the jellyfin-10.11 branch for that build.
   1.0.0.0
   - Initial release: adds a Letterboxd link button to movie detail pages.
