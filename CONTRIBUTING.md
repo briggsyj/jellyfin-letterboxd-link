@@ -82,14 +82,14 @@ To try a change on a real server, `dotnet publish Jellyfin.Plugin.LetterboxdLink
 
 ### Jellyfin 10.11 support
 
-`main` targets Jellyfin 12.0 (net10.0, `Jellyfin.Controller`/`Jellyfin.Model` 12.0.0).
+`main` targets Jellyfin 12.1 (net10.0, `Jellyfin.Controller`/`Jellyfin.Model` 12.1.0).
 The [`jellyfin-10.11`](../../tree/jellyfin-10.11) branch is a frozen snapshot of the
 last 10.11-targeted state (net9.0, packages pinned to 10.11.11, `build.yaml`
 `targetAbi: 10.11.0.0`) kept around so 10.11 users keep getting a working plugin.
 Cut any 10.11 patch releases from that branch; the plugin repository manifest
 accumulates versions across both, and each server only ever sees the
 highest version whose `targetAbi` it satisfies. Backport fixes there only if
-they don't depend on 12.0-only APIs.
+they don't depend on 12.1-only APIs.
 
 ## Code style
 
