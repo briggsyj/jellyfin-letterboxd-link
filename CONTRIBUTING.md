@@ -91,6 +91,23 @@ accumulates versions across both, and each server only ever sees the
 highest version whose `targetAbi` it satisfies. Backport fixes there only if
 they don't depend on 12.3-only APIs.
 
+### Tracking upcoming Jellyfin versions
+
+`.github/workflows/jellyfin-compat.yml` runs weekly (and on demand) and builds and
+tests against the newest stable `Jellyfin.Controller`/`Jellyfin.Model` on NuGet plus
+the newest pre-release ahead of it. A failure opens (or comments on) an issue titled
+"Compatibility check failing against Jellyfin X". It only covers server-side
+compilation and the existing tests, not jellyfin-web markup changes; check those by
+hand against a real server (see "How it works"). To reproduce locally, pass the
+version through the same property the workflow uses:
+
+```bash
+dotnet test -p:JellyfinVersion=12.4.0-rc1
+```
+
+When a new stable passes, bump the default `JellyfinVersion` in the plugin `.csproj`,
+`targetAbi` in `build.yaml`, and the version mentions in this file and the README.
+
 ## Code style
 
 - Nullable reference types on, warnings as errors (including missing XML docs on
