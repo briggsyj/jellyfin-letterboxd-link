@@ -10,6 +10,14 @@
         "imageUrl": "https://briggsyj.github.io/jellyfin-letterboxd-link/letterboxd-link/manifest-banner.png",
         "versions": [
             {
+                "version": "2.0.0.0",
+                "changelog": "2.0.0.0 - Target Jellyfin 12.3 (net10.0). Jellyfin 10.11.x users should stay on\n  the 1.x releases; see the jellyfin-10.11 branch for that build.\n1.0.0.0 - Initial release: adds a Letterboxd link button to movie detail pages.\n",
+                "targetAbi": "12.3.0.0",
+                "sourceUrl": "https://briggsyj.github.io/jellyfin-letterboxd-link/letterboxd-link/letterboxd-link_2.0.0.0.zip",
+                "checksum": "afbc6bd8ddc45051ccf7a687351abf26",
+                "timestamp": "2026-10-25T06:11:40Z"
+            },
+            {
                 "version": "1.6.0.0",
                 "changelog": "2.0.0.0 - Target Jellyfin 12.1 (net10.0). Jellyfin 10.11.x users should stay on\n  the 1.x releases; see the jellyfin-10.11 branch for that build.\n1.0.0.0 - Initial release: adds a Letterboxd link button to movie detail pages.\n",
                 "targetAbi": "12.1.0.0",
