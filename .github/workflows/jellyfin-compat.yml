@@ -1,0 +1,81 @@
+name: Jellyfin compatibility
+
+# Weekly check that the plugin still builds and passes its tests against the
+# newest stable Jellyfin packages on NuGet and the newest pre-release (RC /
+# unstable) ahead of it. A failure opens (or comments on) an issue so breakage
+# is known before Jellyfin promotes that version to stable.
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  resolve:
+    name: Resolve Jellyfin versions
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - name: Resolve versions from NuGet
+        id: resolve
+        run: |
+          set -euo pipefail
+          all=$(curl -fsS https://api.nuget.org/v3-flatcontainer/jellyfin.controller/index.json | jq -r '.versions[]')
+
+          stable=$(grep -v -- '-' <<<"$all" | sort -V | tail -n1)
+          # Newest pre-release whose base version is ahead of the latest stable.
+          pre=$(grep -- '-' <<<"$all" | while read -r v; do
+                  base="${v%%-*}"
+                  if [ "$(printf '%s\n%s\n' "$stable" "$base" | sort -V | tail -n1)" = "$base" ] && [ "$base" != "$stable" ]; then
+                    echo "$v"
+                  fi
+                done | sort -V | tail -n1 || true)
+
+          include=$(jq -cn --arg s "$stable" --arg p "$pre" \
+            '[{channel:"stable",version:$s}] + (if $p != "" then [{channel:"unstable",version:$p}] else [] end)')
+          echo "matrix={\"include\":${include}}" >> "$GITHUB_OUTPUT"
+          echo "Testing: ${include}"
+
+  test:
+    name: ${{ matrix.channel }} (${{ matrix.version }})
+    needs: resolve
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.resolve.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build and test against Jellyfin ${{ matrix.version }}
+        run: |
+          dotnet restore -p:JellyfinVersion=${{ matrix.version }}
+          dotnet build --no-restore -c Release -p:JellyfinVersion=${{ matrix.version }}
+          dotnet test --no-build -c Release -p:JellyfinVersion=${{ matrix.version }}
+
+      - name: Report failure
+        if: failure()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const title = `Compatibility check failing against Jellyfin ${{ matrix.version }}`;
+            const body = `The weekly compatibility check failed for the ${{ matrix.channel }} Jellyfin package \`${{ matrix.version }}\`.\n\n${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              ...context.repo, state: 'open', per_page: 100,
+            });
+            const existing = issues.find(i => i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({ ...context.repo, title, body });
+            }
