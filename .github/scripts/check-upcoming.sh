@@ -46,6 +46,11 @@ ft_stable=$(awk '{print $2}' <<<"$ft_tag_lines" | sed 's/\^{}$//' | sort -u | la
 ft_stable_commit=$(awk -v t="$ft_stable" '$2 == t"^{}" {print $1}' <<<"$ft_tag_lines")
 [ -n "$ft_stable_commit" ] || ft_stable_commit=$(awk -v t="$ft_stable" '$2 == t {print $1}' <<<"$ft_tag_lines")
 
+if [ -z "$jellyfin_stable" ] || [ -z "$ft_stable" ] || [ -z "$ft_stable_commit" ]; then
+    echo "Could not resolve versions (jellyfin='$jellyfin_stable', file-transformation='$ft_stable'); not reporting." >&2
+    exit 1
+fi
+
 # Upcoming File Transformation work: the default branch and any vNN branches
 # (it has developed support for new Jellyfin majors on those) that are ahead
 # of the latest tag.
