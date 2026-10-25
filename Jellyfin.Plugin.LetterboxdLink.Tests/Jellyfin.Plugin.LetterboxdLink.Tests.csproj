@@ -11,6 +11,9 @@
     <PackageReference Include="coverlet.collector" Version="10.1.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
+    <!-- The plugin project leaves Jellyfin's assemblies out (the server supplies them);
+         tests that run plugin code against a real File Transformation need them at runtime. -->
+    <PackageReference Include="Jellyfin.Controller" Version="$(JellyfinVersion)" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" />
   </ItemGroup>
 

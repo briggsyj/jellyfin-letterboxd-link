@@ -7,8 +7,6 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <!-- Overridable (-p:JellyfinVersion=...) so the compat workflow can build against newer Jellyfin packages. -->
-    <JellyfinVersion Condition="'$(JellyfinVersion)' == ''">12.3.0</JellyfinVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +16,10 @@
     <PackageReference Include="Jellyfin.Model" Version="$(JellyfinVersion)">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Jellyfin.Plugin.LetterboxdLink.Tests" />
   </ItemGroup>
 
   <ItemGroup>

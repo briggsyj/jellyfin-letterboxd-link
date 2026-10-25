@@ -125,19 +125,44 @@ public sealed class FileTransformationRegistrar : IHostedService, IDisposable
             return false;
         }
 
-        Type? pluginInterfaceType = fileTransformationAssembly.GetType(PluginInterfaceTypeName);
-        MethodInfo? registerMethod = pluginInterfaceType?.GetMethod(RegisterTransformationMethodName);
+        MethodInfo? registerMethod = FindRegisterMethod(fileTransformationAssembly);
         if (registerMethod is null)
         {
             return false;
         }
 
-        ParameterInfo[] parameters = registerMethod.GetParameters();
-        if (parameters.Length != 1)
+        object? payload = CreatePayload(registerMethod);
+        if (payload is null)
         {
             return false;
         }
 
+        registerMethod.Invoke(null, new object?[] { payload });
+        return true;
+    }
+
+    /// <summary>
+    /// Finds File Transformation's static registration method, which must take
+    /// exactly one (payload) parameter. Internal so the contract tests can run
+    /// the same lookup against a freshly built File Transformation assembly.
+    /// </summary>
+    /// <param name="fileTransformationAssembly">The File Transformation plugin assembly.</param>
+    /// <returns>The method, or <c>null</c> if the plugin's interface has changed shape.</returns>
+    internal static MethodInfo? FindRegisterMethod(Assembly fileTransformationAssembly)
+    {
+        Type? pluginInterfaceType = fileTransformationAssembly.GetType(PluginInterfaceTypeName);
+        MethodInfo? registerMethod = pluginInterfaceType?.GetMethod(RegisterTransformationMethodName);
+        return registerMethod?.GetParameters().Length == 1 ? registerMethod : null;
+    }
+
+    /// <summary>
+    /// Builds the registration payload as an instance of the payload type
+    /// File Transformation's <paramref name="registerMethod"/> expects.
+    /// </summary>
+    /// <param name="registerMethod">The method returned by <see cref="FindRegisterMethod"/>.</param>
+    /// <returns>The payload, or <c>null</c> if the payload type cannot be built.</returns>
+    internal static object? CreatePayload(MethodInfo registerMethod)
+    {
         // The payload type (Newtonsoft.Json.Linq.JObject) belongs to File
         // Transformation's own assembly. Building an instance of it directly
         // would require our plugin to reference a copy of Newtonsoft.Json
@@ -145,14 +170,14 @@ public sealed class FileTransformationRegistrar : IHostedService, IDisposable
         // we serialize the payload with the BCL's JSON writer and parse it
         // using the target type's own static Parse(string) method, so the
         // instance we hand back to File Transformation is always its type.
-        Type payloadType = parameters[0].ParameterType;
+        Type payloadType = registerMethod.GetParameters()[0].ParameterType;
         MethodInfo? parseMethod = payloadType.GetMethod("Parse", new[] { typeof(string) });
-        if (parseMethod is null)
-        {
-            return false;
-        }
+        return parseMethod?.Invoke(null, new object?[] { BuildPayloadJson() });
+    }
 
-        string payloadJson = JsonSerializer.Serialize(new
+    private static string BuildPayloadJson()
+    {
+        return JsonSerializer.Serialize(new
         {
             id = TransformationId,
             // An unanchored regex, not a literal: File Transformation matches it
@@ -165,9 +190,5 @@ public sealed class FileTransformationRegistrar : IHostedService, IDisposable
             callbackClass = typeof(IndexHtmlTransformation).FullName,
             callbackMethod = nameof(IndexHtmlTransformation.Inject)
         });
-
-        object? payload = parseMethod.Invoke(null, new object?[] { payloadJson });
-        registerMethod.Invoke(null, new object?[] { payload });
-        return true;
     }
 }
