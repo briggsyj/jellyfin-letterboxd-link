@@ -91,21 +91,50 @@ accumulates versions across both, and each server only ever sees the
 highest version whose `targetAbi` it satisfies. Backport fixes there only if
 they don't depend on 12.3-only APIs.
 
-### Tracking upcoming Jellyfin versions
+### Preparing for upcoming Jellyfin and File Transformation versions
 
-`.github/workflows/jellyfin-compat.yml` runs weekly (and on demand) and builds and
-tests against the newest stable `Jellyfin.Controller`/`Jellyfin.Model` on NuGet plus
-the newest pre-release ahead of it. A failure opens (or comments on) an issue titled
-"Compatibility check failing against Jellyfin X". It only covers server-side
-compilation and the existing tests, not jellyfin-web markup changes; check those by
-hand against a real server (see "How it works"). To reproduce locally, pass the
-version through the same property the workflow uses:
+The goal: when a new Jellyfin or File Transformation version ships, a tested build
+is already waiting and promoting it is a merge and a tag.
+
+- **`main`** always works with the latest *stable* Jellyfin and File Transformation.
+  Stable releases are tagged here, and only here.
+- **`develop`** carries work against the next, unstable versions (a Jellyfin
+  release candidate, an unreleased File Transformation branch). It starts equal to
+  `main` and only differs while something upcoming needs changes.
+  Day-to-day fixes go to `main`; merge `main` into `develop` to keep it current.
+- **Unstable builds** are tagged on `develop` (e.g. `v2.1.0.0-rc.1`) and published
+  as GitHub *pre-releases*. Those attach the zip for manual testing but are never
+  added to the plugin repository manifest, so regular users are unaffected.
+- **Promotion**: when the dependency goes stable, bump `JellyfinVersion` and
+  `targetAbi` if they haven't been already, merge `develop` into `main`, and
+  publish a normal release from `main`.
+
+`.github/workflows/upcoming-compat.yml` is the early warning. Weekly (and on demand,
+on any branch) it checks the code against:
+
+- **Jellyfin**: the newest stable `Jellyfin.Controller`/`Jellyfin.Model` on NuGet and
+  the newest pre-release ahead of it (build and all tests).
+- **File Transformation**: its latest release tag and any branch ahead of that
+  (`main`, `vNN`), built from source and run through the contract tests in
+  `FileTransformationContractTests` (registration, pattern and callback pipeline).
+
+One issue, "Upcoming Jellyfin / File Transformation compatibility check failing",
+lists both and closes itself when everything passes. It does not cover jellyfin-web
+markup changes; check those by hand against a real server (see "How it works").
+
+To reproduce locally:
 
 ```bash
-dotnet test -p:JellyfinVersion=12.4.0-rc1
+dotnet test -p:JellyfinVersion=12.4.0-rc1        # a Jellyfin version
+.github/scripts/check-upcoming.sh                # the whole weekly check
+
+# the contract tests against your own File Transformation build:
+dotnet build <ft-checkout>/src/Jellyfin.Plugin.FileTransformation -c Release \
+  -p:CopyLocalLockFileAssemblies=true -o /tmp/ft
+FILE_TRANSFORMATION_DLL=/tmp/ft/Jellyfin.Plugin.FileTransformation.dll dotnet test
 ```
 
-When a new stable passes, bump the default `JellyfinVersion` in the plugin `.csproj`,
+When a new stable passes, bump the default `JellyfinVersion` in `Directory.Build.props`,
 `targetAbi` in `build.yaml`, and the version mentions in this file and the README.
 
 ## Code style
@@ -126,6 +155,9 @@ Publishing a GitHub Release builds the plugin with
 2. Publishes the repository manifest to the `gh-pages` branch via `jprm repo
    add`, enabling install-by-URL in Jellyfin. `gh-pages` is created on first
    release.
+
+Releases marked *pre-release* (from `develop`) only do step 1; the manifest is left
+alone. A `-rc.N` style suffix on the tag is dropped when building the version.
 
 `workflow_dispatch` runs only the build, skipping both steps above.
 

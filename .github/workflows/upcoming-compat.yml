@@ -1,0 +1,85 @@
+name: Upcoming compatibility
+
+# Weekly check that the plugin still works with the newest stable AND upcoming
+# versions of what it runs on, so a new stable release can be promoted as soon
+# as they ship:
+#   - Jellyfin: the newest stable Jellyfin.Controller/Model on NuGet, plus the
+#     newest pre-release ahead of it (build + all tests).
+#   - File Transformation: its latest release tag, plus any branch ahead of it
+#     (main / vNN), built from source and run through contract tests.
+# One issue tracks both: it is created or updated while anything fails and
+# closed again once everything passes. Run manually on any branch to check
+# that branch's code (e.g. develop).
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      update_issue:
+        description: 'Create/update/close the tracking issue (turn off for a dry run)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: Check upcoming Jellyfin and File Transformation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Run checks
+        run: .github/scripts/check-upcoming.sh compat-out
+
+      - name: Publish report
+        run: cat compat-out/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Update tracking issue
+        if: ${{ github.event_name == 'schedule' || inputs.update_issue }}
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'Upcoming Jellyfin / File Transformation compatibility check failing';
+            const failing = fs.existsSync('compat-out/failed');
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const report = fs.readFileSync('compat-out/report.md', 'utf8');
+
+            const { data: open } = await github.rest.issues.listForRepo({
+              ...context.repo, state: 'open', per_page: 100,
+            });
+            const existing = open.find(i => i.title === title);
+
+            if (failing) {
+              const body = `${report}\n\n[Workflow run](${runUrl}). This issue is updated by the weekly check and closes itself once everything passes.`;
+              if (existing) {
+                await github.rest.issues.update({ ...context.repo, issue_number: existing.number, body });
+              } else {
+                await github.rest.issues.create({ ...context.repo, title, body });
+              }
+            } else if (existing) {
+              await github.rest.issues.createComment({
+                ...context.repo, issue_number: existing.number,
+                body: `Everything passes again as of ${runUrl}.\n\n${report}`,
+              });
+              await github.rest.issues.update({
+                ...context.repo, issue_number: existing.number, state: 'closed', state_reason: 'completed',
+              });
+            }
+
+      - name: Fail if anything failed
+        run: |
+          if [ -f compat-out/failed ]; then
+            echo "One or more compatibility checks failed; see the report above."
+            exit 1
+          fi
