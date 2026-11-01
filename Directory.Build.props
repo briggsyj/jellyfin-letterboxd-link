@@ -5,6 +5,6 @@
         <FileVersion>2.0.0.0</FileVersion>
         <!-- Jellyfin.Controller/Jellyfin.Model version the plugin and tests build against.
              Overridable (-p:JellyfinVersion=...) so the compat workflow can try newer ones. -->
-        <JellyfinVersion Condition="'$(JellyfinVersion)' == ''">12.3.0</JellyfinVersion>
+        <JellyfinVersion Condition="'$(JellyfinVersion)' == ''">12.4.0</JellyfinVersion>
     </PropertyGroup>
 </Project>
